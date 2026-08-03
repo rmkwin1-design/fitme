@@ -245,16 +245,45 @@ export default function TryOnUploader() {
         throw new Error(t(errorKey, t("ERR_SERVER_ERROR")));
       }
 
-      if (data.imageUrl) {
-        setResultImageUrl(data.imageUrl);
+      const requestId = data.requestId;
+      if (!requestId) {
+        throw new Error(t("ERR_GENERATE_FAILED"));
+      }
 
-        // If not using BYOK or Unlimited, increment demo uses counter
-        if (!byokKey && !isUnlimited) {
-          const newCount = freeUsesCount + 1;
-          setFreeUsesCount(newCount);
-          localStorage.setItem("fitme_uses", String(newCount));
+      // Poll status every 2 seconds until COMPLETED or error
+      let isDone = false;
+      let attempts = 0;
+      const maxAttempts = 45; // Max 90 seconds polling
+
+      while (!isDone && attempts < maxAttempts) {
+        attempts++;
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        const statusResp = await fetch(`/api/tryon/status/${requestId}`, {
+          headers: byokKey ? { "x-fal-key": byokKey } : {},
+        });
+
+        const statusData = await statusResp.json();
+
+        if (!statusResp.ok) {
+          const errorKey = statusData.errorCode || statusData.error;
+          throw new Error(t(errorKey, t("ERR_SERVER_ERROR")));
         }
-      } else {
+
+        if (statusData.status === "COMPLETED" && statusData.imageUrl) {
+          isDone = true;
+          setResultImageUrl(statusData.imageUrl);
+
+          // If not using BYOK or Unlimited, increment demo uses counter
+          if (!byokKey && !isUnlimited) {
+            const newCount = freeUsesCount + 1;
+            setFreeUsesCount(newCount);
+            localStorage.setItem("fitme_uses", String(newCount));
+          }
+        }
+      }
+
+      if (!isDone) {
         throw new Error(t("ERR_GENERATE_FAILED"));
       }
     } catch (err: unknown) {
