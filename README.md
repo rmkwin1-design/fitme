@@ -23,10 +23,57 @@ FitMe는 사용자의 본인 사진과 입어보고 싶은 옷 사진 2장을 �
    - `ko`: 토스페이먼츠 (Primary) / PayPal (Secondary)
    - `ja`: Stripe Checkout (PayPay, 편의점 Konbini, 카드) / PayPal (Secondary)
    - `en`: Stripe Checkout (Apple Pay, Google Pay, Cards) / PayPal (Secondary)
+6. **SEO & PWA 기본 탑재**
+   - `sitemap.ts`, `robots.ts`, `manifest.json` (모바일 홈 화면 추가 PWA 지원)
+   - 다국어 동적 Open Graph 이미지 생성 (`/api/og`)
+   - 구글 서치콘솔 및 네이버 서치어드바이저 소유 확인 태그 지원
 
 ---
 
-## ⚙️ Vercel 배포 시 런타임 및 필수 환경 변수 (Runtime & Env Vars)
+## 🌐 커스텀 도메인 연결 가이드 (Custom Domain Setup)
+
+가비아(Gabia), Namecheap, 도메인한국 등에서 구입한 커스텀 도메인을 연결하는 방법:
+
+1. **Vercel 설정**:
+   - Vercel 대시보드 ➔ **`fitme` 프로젝트** ➔ **[Settings]** ➔ **[Domains]** 메뉴로 이동
+   - 본인의 도메인(예: `fitme.co.kr` 또는 `fitme.app`)을 입력하고 **Add** 클릭
+2. **도메인 구매처(가비아/Namecheap 등) DNS 설정**:
+   - **루트 도메인 (예: `fitme.app`)**:
+     - 레코드 타입: **A Record**
+     - 이름/호스트: `@`
+     - 값/IP: **`76.76.21.21`**
+   - **서브 도메인 (예: `www.fitme.app`)**:
+     - 레코드 타입: **CNAME**
+     - 이름/호스트: `www`
+     - 값/Target: **`cname.vercel-dns.com`**
+
+---
+
+## 🚀 배포 후 포털 검색등록 체크리스트 (Post-Deploy Checklist)
+
+도메인을 연결했거나 라이브 사이트 배포 후 포털 검색 노출을 위한 체크리스트:
+
+### 1. 구글 서치콘솔 (Google Search Console)
+1. [Google Search Console](https://search.google.com/search-console) 접속 및 로그인
+2. 속성 추가 ➔ **URL 접두사**에 `https://fitme-nu-woad.vercel.app` (또는 커스텀 도메인) 입력
+3. 소유권 확인 방식 중 **HTML 태그** 선택 ➔ `<meta name="google-site-verification" content="..." />` 값 복사
+4. [app/layout.tsx](file:///d:/AI%20가상%20피팅룸/fitme/app/layout.tsx)의 `PLACEHOLDER_GOOGLE_VERIFICATION` 위치에 붙여넣고 재배포
+5. 좌측 **Sitemaps** 메뉴에서 `sitemap.xml` 제출
+
+### 2. 네이버 서치어드바이저 (Naver Search Advisor)
+1. [네이버 서치어드바이저](https://searchadvisor.naver.com) 접속 및 로그인
+2. **웹마스터 도구** ➔ 사이트 등록 (`https://fitme-nu-woad.vercel.app`)
+3. **HTML 태그** 선택 ➔ `<meta name="naver-site-verification" content="..." />` 값 복사
+4. [app/layout.tsx](file:///d:/AI%20가상%20피팅룸/fitme/app/layout.tsx)의 `PLACEHOLDER_NAVER_VERIFICATION` 위치에 붙여넣고 재배포
+5. **요청 ➔ 사이트맵 제출**에서 `sitemap.xml` 입력 및 제출
+
+### 3. 빙 웹마스터 툴 (Bing Webmaster Tools)
+1. [Bing Webmaster Tools](https://www.bing.com/webmasters) 접속
+2. **구글 서치콘솔 연동으로 가져오기(Import)**를 누르면 1초 만에 자동 등록 완료!
+
+---
+
+## ⚙️ Vercel 배포 시 런타임 및 필수 환경 변수
 
 ### 1. 런타임 환경 (Node.js Runtime)
 * `/api/tryon` 라우트는 `@fal-ai/client` 및 Node.js `Buffer` 객체를 사용하므로 Edge 런타임이 아닌 **Node.js 런타임**으로 작동합니다 (`export const runtime = "nodejs";`).
@@ -44,51 +91,14 @@ FitMe는 사용자의 본인 사진과 입어보고 싶은 옷 사진 2장을 �
 
 ---
 
-## 🚀 Vercel 배포 가이드 (Vercel Deployment Steps)
-
-### 단계 1: 깃허브(GitHub) 저장소에 코드 올리기
-
-터미널에서 아래 명령어들을 실행합니다:
-
-```bash
-# 깃 저장소 초기화 (미생성 시)
-git init
-
-# 파일 스테이징 및 커밋
-git add .
-git commit -m "feat: Prepare FitMe project for Vercel deployment"
-
-# GitHub 브랜치 설정 및 푸시 (본인의 저장소 URL 입력)
-git branch -M main
-git remote add origin https://github.com/YOUR_GITHUB_USERNAME/fitme.git
-git push -u origin main
-```
-
-### 단계 2: Vercel 대시보드에서 새 프로젝트 생성
-
-1. [Vercel Dashboard](https://vercel.com/dashboard) 접속 후 로그인
-2. **"Add New..."** → **"Project"** 클릭
-3. 위에서 푸시한 GitHub 저장소(`fitme`)를 **Import** 합니다.
-
-### 단계 3: 환경 변수(Environment Variables) 입력하기
-
-1. Vercel 프로젝트 설정 화면의 **"Environment Variables"** 섹션을 엽니다.
-2. 아래 항목들을 등록합니다:
-   - **Key**: `FAL_KEY` / **Value**: 본인의 Fal.ai API 키
-   - **Key**: `PAYPAL_CLIENT_ID` / **Value**: 본인의 PayPal Client ID
-   - **Key**: `PAYPAL_CLIENT_SECRET` / **Value**: 본인의 PayPal Secret Key
-3. **"Deploy"** 버튼을 눌러 배포를 완료합니다!
-
----
-
 ## 🌐 English Note
 
 FitMe is an AI Virtual Try-On web app built with Next.js 14 (App Router), TypeScript, and Tailwind CSS.
-- **Node.js Runtime**: `/api/tryon` relies on `@fal-ai/client` and Node.js `Buffer`, so it explicitly runs on the Node.js runtime (`export const runtime = "nodejs";`).
-- **Required Env Var**: Set `FAL_KEY` in Vercel Project Settings > Environment Variables. Never commit secret keys to repository.
+- **SEO & PWA**: Features `app/sitemap.ts`, `app/robots.ts`, `public/manifest.json` (PWA Add to Home Screen), and dynamic Open Graph image generation (`/api/og`).
+- **Node.js Runtime**: `/api/tryon` explicitly runs on the Node.js runtime (`export const runtime = "nodejs";`).
 
 ## 🇯🇵 Japanese Note
 
 FitMeはNext.js 14（App Router）とTypeScript、Tailwind CSSで構築されたAIバーチャル試着Webアプリです。
-- **Node.jsランタイム**: `/api/tryon`は`@fal-ai/client`およびNode.jsの`Buffer`を使用するため、Node.jsランタイム（`export const runtime = "nodejs";`）で動作します。
-- **必須環境変数**: Vercel Project Settings > Environment Variablesにて`FAL_KEY`を設定してください（`.env.local`はGitにコミットしないでください）。
+- **SEO・PWA**: `app/sitemap.ts`、`app/robots.ts`、`public/manifest.json`（PWAホーム画面追加）、動的OGP画像生成（`/api/og`）に対応。
+- **Node.jsランタイム**: `/api/tryon`はNode.jsランタイム（`export const runtime = "nodejs";`）で動作します。
