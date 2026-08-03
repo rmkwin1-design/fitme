@@ -6,7 +6,13 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
-    const { personImageBase64, garmentImageBase64, garmentPhotoType } = await req.json();
+    const {
+      personImageBase64,
+      garmentImageBase64,
+      garmentPhotoType,
+      garmentCategory,
+      isPaidUser,
+    } = await req.json();
 
     if (!personImageBase64 || !garmentImageBase64) {
       console.error("[TryOn Submit API] Error: Missing images in payload");
@@ -29,8 +35,12 @@ export async function POST(req: Request) {
 
     fal.config({ credentials: falKey });
 
-    // Dynamic Base64 to File parser with sharp EXIF auto-rotation & stripping
-    const toFile = async (b64String: string, defaultName: string): Promise<File> => {
+    // Dynamic Base64 to File parser with EXIF auto-rotation + mirror border extension padding
+    const toFile = async (
+      b64String: string,
+      defaultName: string,
+      shouldExtendPadding = false
+    ): Promise<File> => {
       const matches = b64String.match(/^data:(image\/\w+);base64,(.+)$/);
       let mimeType = "image/jpeg";
       let rawData = b64String;
@@ -48,10 +58,22 @@ export async function POST(req: Request) {
       rawData = rawData.replace(/\s/g, "");
       const rawBuffer = Buffer.from(rawData, "base64");
 
-      // Use sharp to auto-rotate based on EXIF tag and strip EXIF
       let cleanBuffer: Buffer;
       try {
-        cleanBuffer = await sharp(rawBuffer).rotate().toBuffer();
+        let pipeline = sharp(rawBuffer).rotate();
+
+        if (shouldExtendPadding) {
+          // Extend borders with mirror background (40px padding) to assist pose landmark detection
+          pipeline = pipeline.extend({
+            top: 40,
+            bottom: 40,
+            left: 40,
+            right: 40,
+            background: "mirror",
+          });
+        }
+
+        cleanBuffer = await pipeline.toBuffer();
       } catch (sharpErr) {
         console.warn("[TryOn Submit API] Sharp processing warning, falling back to raw buffer:", sharpErr);
         cleanBuffer = rawBuffer;
@@ -65,8 +87,8 @@ export async function POST(req: Request) {
       return new File([uint8Array], `${defaultName}.${ext}`, { type: mimeType });
     };
 
-    const personFile = await toFile(personImageBase64, "person");
-    const garmentFile = await toFile(garmentImageBase64, "garment");
+    const personFile = await toFile(personImageBase64, "person", true);
+    const garmentFile = await toFile(garmentImageBase64, "garment", false);
 
     console.log("[TryOn Submit API] Uploading sharp-rotated storage files...", {
       personSize: personFile.size,
@@ -95,14 +117,23 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log("[TryOn Submit API] Submitting queue job for fal-ai/fashn/tryon/v1.6...");
+    // Determine tier-based execution mode (quality for paid users vs balanced for free tier)
+    const mode = isPaidUser || !!userKey ? "quality" : "balanced";
+    const category = garmentCategory && garmentCategory !== "auto" ? garmentCategory : undefined;
+
+    console.log("[TryOn Submit API] Submitting queue job for fal-ai/fashn/tryon/v1.6...", {
+      mode,
+      category,
+      garmentPhotoType: garmentPhotoType || "model",
+    });
 
     const handle = await fal.queue.submit("fal-ai/fashn/tryon/v1.6", {
       input: {
         model_image: personUrl,
         garment_image: garmentUrl,
-        garment_photo_type: garmentPhotoType || "model",
-        mode: "balanced",
+        garment_photo_type: (garmentPhotoType as "model" | "flat-lay") || "model",
+        mode: mode as "performance" | "balanced" | "quality",
+        ...(category ? { category: category as "tops" | "bottoms" | "one-pieces" } : {}),
       },
     });
 

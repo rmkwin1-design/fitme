@@ -42,13 +42,21 @@ export const translations: Record<Locale, Record<string, string>> = {
       "쇼핑몰 캡처, 모델 착용 샷, 옷 단독 샷 모두 가능",
     "uploader.aspectWarning":
       "⚠️ 어깨까지 나오는 반신 이상 사진을 사용해 주세요 (증명사진처럼 바짝 자른 사진이나 가로 사진은 인식이 어려워요)",
+    "uploader.shoulderWarning":
+      "💡 어깨가 잘 보이는 사진을 사용하면 훨씬 정확한 피팅 결과가 생성됩니다.",
     "uploader.hint": "내 사진과 옷 사진 두 장을 모두 선택하면 버튼이 활성화됩니다.",
 
-    // Garment Type
+    // Garment Type & Category
     "garmentType.title": "의상 사진 종류 선택",
     "garmentType.sub": "피팅 정확도를 위해 권장됩니다",
     "garmentType.model": "모델 착용 사진",
     "garmentType.flatLay": "플랫레이(옷만 촬영)",
+
+    "garmentCategory.title": "의상 카테고리 (선택)",
+    "garmentCategory.auto": "자동 감지",
+    "garmentCategory.tops": "상의 / 자켓 / 아우터",
+    "garmentCategory.bottoms": "하의 (바지 / 치마)",
+    "garmentCategory.onePieces": "원피스 / 드레스",
 
     // Banner & Counters
     "banner.byokActive": "내 API 키 적용 중 (무제한 사용 가능)",

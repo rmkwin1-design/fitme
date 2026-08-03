@@ -1,7 +1,17 @@
 import { fal } from "@fal-ai/client";
 import { NextResponse } from "next/server";
+import sharp from "sharp";
 
 export const runtime = "nodejs";
+
+// Image Post-Processing Enhancement Configurations (Configurable Constants)
+const ENHANCE_CONFIG = {
+  sharpen: { sigma: 1.2, m1: 1.0, m2: 2.0 },
+  modulate: { brightness: 1.03, saturation: 1.08 },
+  linearMultiplier: 1.05,
+  linearOffset: -8,
+  gamma: 1.05,
+};
 
 interface FalApiError {
   body?: {
@@ -56,9 +66,9 @@ export async function GET(
           images?: Array<{ url: string }>;
         };
 
-        const imageUrl = result.data?.images?.[0]?.url || result.images?.[0]?.url;
+        const rawImageUrl = result.data?.images?.[0]?.url || result.images?.[0]?.url;
 
-        if (!imageUrl) {
+        if (!rawImageUrl) {
           console.error(`[TryOn Status API] Completed status but no image URL found for ${requestId}`, result);
           return NextResponse.json(
             { errorCode: "ERR_GENERATE_FAILED", error: "결과 이미지를 수신하지 못했습니다." },
@@ -66,8 +76,38 @@ export async function GET(
           );
         }
 
-        console.log(`[TryOn Status API] Success! Image URL: ${imageUrl}`);
-        return NextResponse.json({ status: "COMPLETED", imageUrl });
+        console.log(`[TryOn Status API] Downloading raw image for sharp post-processing enhancement: ${rawImageUrl}`);
+
+        let finalImageUrl = rawImageUrl;
+
+        try {
+          const imgResp = await fetch(rawImageUrl);
+          if (imgResp.ok) {
+            const rawArrayBuffer = await imgResp.arrayBuffer();
+            const rawBuffer = Buffer.from(rawArrayBuffer);
+
+            // Apply sharp post-processing quality enhancement pipeline
+            const enhancedBuffer = await sharp(rawBuffer)
+              .sharpen(ENHANCE_CONFIG.sharpen)
+              .modulate(ENHANCE_CONFIG.modulate)
+              .linear(ENHANCE_CONFIG.linearMultiplier, ENHANCE_CONFIG.linearOffset)
+              .gamma(ENHANCE_CONFIG.gamma)
+              .png()
+              .toBuffer();
+
+            const uint8Array = new Uint8Array(enhancedBuffer);
+            const enhancedFile = new File([uint8Array], "fitme-result-enhanced.png", { type: "image/png" });
+            const uploadRes = await fal.storage.upload(enhancedFile);
+            finalImageUrl = typeof uploadRes === "string" ? uploadRes : (uploadRes as { url?: string })?.url || rawImageUrl;
+
+            console.log(`[TryOn Status API] Post-processing enhancement successful! Enhanced URL: ${finalImageUrl}`);
+          }
+        } catch (enhanceErr) {
+          console.warn("[TryOn Status API] Sharp post-processing enhancement warning, using raw URL:", enhanceErr);
+          finalImageUrl = rawImageUrl;
+        }
+
+        return NextResponse.json({ status: "COMPLETED", imageUrl: finalImageUrl });
       } catch (resultErr: unknown) {
         const falErr = resultErr as FalApiError;
         const detail = falErr?.body?.detail;

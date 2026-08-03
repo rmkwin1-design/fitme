@@ -39,6 +39,7 @@ export default function TryOnUploader() {
   const [userImage, setUserImage] = useState<ImageState | null>(null);
   const [garmentImage, setGarmentImage] = useState<ImageState | null>(null);
   const [garmentType, setGarmentType] = useState<GarmentType>("model");
+  const [garmentCategory, setGarmentCategory] = useState<"auto" | "tops" | "bottoms" | "one-pieces">("auto");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isPaymentLoading, setIsPaymentLoading] = useState<boolean>(false);
@@ -253,6 +254,8 @@ export default function TryOnUploader() {
           personImageBase64: userImage.base64,
           garmentImageBase64: garmentImage.base64,
           garmentPhotoType: garmentType,
+          garmentCategory,
+          isPaidUser: isUnlimited || !!byokKey,
         }),
       });
 
@@ -575,7 +578,7 @@ export default function TryOnUploader() {
           <span className="text-xs text-slate-400">{t("garmentType.sub")}</span>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 mb-4">
           <button
             type="button"
             disabled={isLoading}
@@ -603,6 +606,30 @@ export default function TryOnUploader() {
             <Shirt className="w-4 h-4" />
             <span>{t("garmentType.flatLay")}</span>
           </button>
+        </div>
+
+        {/* Garment Category Selector */}
+        <div className="pt-3 border-t border-slate-200/60">
+          <label className="block text-xs font-semibold text-slate-700 mb-2">
+            {t("garmentCategory.title")}
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {(["auto", "tops", "bottoms", "one-pieces"] as const).map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                disabled={isLoading}
+                onClick={() => setGarmentCategory(cat)}
+                className={`py-2 px-3 rounded-lg text-xs font-medium transition-all text-center border ${
+                  garmentCategory === cat
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-sm font-semibold"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                } ${isLoading ? "cursor-not-allowed opacity-60" : ""}`}
+              >
+                {t(`garmentCategory.${cat === "one-pieces" ? "onePieces" : cat}`)}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
