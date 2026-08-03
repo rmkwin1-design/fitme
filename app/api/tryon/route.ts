@@ -1,5 +1,6 @@
 import { fal } from "@fal-ai/client";
 import { NextResponse } from "next/server";
+import sharp from "sharp";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
     const falKey = userKey || process.env.FAL_KEY;
 
     if (!falKey) {
-      console.error("[TryOn Submit API] Error: FAL_KEY missing (neither header nor process.env.FAL_KEY is set)");
+      console.error("[TryOn Submit API] Error: FAL_KEY missing (neither x-fal-key header nor process.env.FAL_KEY is set)");
       return NextResponse.json(
         { errorCode: "ERR_NO_KEY", error: "사용 가능한 FAL API 키가 없습니다." },
         { status: 401 }
@@ -28,7 +29,8 @@ export async function POST(req: Request) {
 
     fal.config({ credentials: falKey });
 
-    const toFile = (b64String: string, defaultName: string): File => {
+    // Dynamic Base64 to File parser with sharp EXIF auto-rotation & stripping
+    const toFile = async (b64String: string, defaultName: string): Promise<File> => {
       const matches = b64String.match(/^data:(image\/\w+);base64,(.+)$/);
       let mimeType = "image/jpeg";
       let rawData = b64String;
@@ -44,19 +46,29 @@ export async function POST(req: Request) {
       }
 
       rawData = rawData.replace(/\s/g, "");
-      const buffer = Buffer.from(rawData, "base64");
+      const rawBuffer = Buffer.from(rawData, "base64");
+
+      // Use sharp to auto-rotate based on EXIF tag and strip EXIF
+      let cleanBuffer: Buffer;
+      try {
+        cleanBuffer = await sharp(rawBuffer).rotate().toBuffer();
+      } catch (sharpErr) {
+        console.warn("[TryOn Submit API] Sharp processing warning, falling back to raw buffer:", sharpErr);
+        cleanBuffer = rawBuffer;
+      }
 
       let ext = "jpg";
       if (mimeType.includes("png")) ext = "png";
       else if (mimeType.includes("webp")) ext = "webp";
 
-      return new File([buffer], `${defaultName}.${ext}`, { type: mimeType });
+      const uint8Array = new Uint8Array(cleanBuffer);
+      return new File([uint8Array], `${defaultName}.${ext}`, { type: mimeType });
     };
 
-    const personFile = toFile(personImageBase64, "person");
-    const garmentFile = toFile(garmentImageBase64, "garment");
+    const personFile = await toFile(personImageBase64, "person");
+    const garmentFile = await toFile(garmentImageBase64, "garment");
 
-    console.log("[TryOn Submit API] Uploading storage files...", {
+    console.log("[TryOn Submit API] Uploading sharp-rotated storage files...", {
       personSize: personFile.size,
       garmentSize: garmentFile.size,
     });
@@ -98,7 +110,16 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ requestId: handle.request_id });
   } catch (err: unknown) {
-    console.error("[TryOn Submit API Failure]:", err);
+    const errString = String(err);
+    console.error("[TryOn Submit API Failure Details]:", errString);
+
+    if (errString.includes("Failed to detect body pose")) {
+      return NextResponse.json(
+        { errorCode: "ERR_NO_POSE", error: "사진에서 신체 포즈를 인식하지 못했어요. 어깨와 상반신이 잘 보이는 정면 사진으로 다시 시도해 주세요." },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
       { errorCode: "ERR_SERVER_ERROR", error: "가상 피팅 제출 중 오류가 발생했습니다." },
       { status: 500 }

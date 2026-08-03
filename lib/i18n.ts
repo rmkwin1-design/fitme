@@ -40,6 +40,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "uploader.garmentDropzoneText": "옷 사진 드래그 또는 클릭하여 업로드",
     "uploader.garmentDropzoneSub":
       "쇼핑몰 캡처, 모델 착용 샷, 옷 단독 샷 모두 가능",
+    "uploader.aspectWarning":
+      "⚠️ 어깨까지 나오는 반신 이상 사진을 사용해 주세요 (증명사진처럼 바짝 자른 사진이나 가로 사진은 인식이 어려워요)",
     "uploader.hint": "내 사진과 옷 사진 두 장을 모두 선택하면 버튼이 활성화됩니다.",
 
     // Garment Type

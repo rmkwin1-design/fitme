@@ -74,6 +74,8 @@ export default function TryOnUploader() {
     }
   }, []);
 
+  const [aspectWarning, setAspectWarning] = useState<string | null>(null);
+
   const processFile = (file: File, type: "user" | "garment") => {
     setError(null);
     setResultImageUrl(null);
@@ -98,6 +100,22 @@ export default function TryOnUploader() {
       if (type === "user") {
         if (userImage?.previewUrl) URL.revokeObjectURL(userImage.previewUrl);
         setUserImage({ file, previewUrl, base64 });
+
+        // Dimension heuristic check for pose warning
+        const img = new Image();
+        img.onload = () => {
+          const w = img.naturalWidth;
+          const h = img.naturalHeight;
+          const isLandscape = w > h;
+          const isTightCrop = h < 450 || (w / h > 0.9 && w / h < 1.1 && h < 650);
+
+          if (isLandscape || isTightCrop) {
+            setAspectWarning(t("uploader.aspectWarning"));
+          } else {
+            setAspectWarning(null);
+          }
+        };
+        img.src = previewUrl;
       } else {
         if (garmentImage?.previewUrl) URL.revokeObjectURL(garmentImage.previewUrl);
         setGarmentImage({ file, previewUrl, base64 });
@@ -380,6 +398,22 @@ export default function TryOnUploader() {
           <button
             onClick={() => setError(null)}
             className="p-1 rounded-lg hover:bg-rose-100 text-rose-500 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Aspect Ratio & Tight Crop Soft Warning Banner */}
+      {aspectWarning && (
+        <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm font-medium flex items-center justify-between gap-3 animate-fadeIn shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
+            <span>{aspectWarning}</span>
+          </div>
+          <button
+            onClick={() => setAspectWarning(null)}
+            className="p-1 rounded-lg hover:bg-amber-100 text-amber-700 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
