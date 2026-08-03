@@ -265,7 +265,7 @@ export default function TryOnUploader() {
 
         const statusData = await statusResp.json();
 
-        if (!statusResp.ok) {
+        if (!statusResp.ok || statusData.status === "FAILED") {
           const errorKey = statusData.errorCode || statusData.error;
           throw new Error(t(errorKey, t("ERR_SERVER_ERROR")));
         }

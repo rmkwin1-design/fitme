@@ -111,6 +111,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     ERR_NO_IMAGES: "내 사진과 옷 사진을 모두 업로드해야 합니다.",
     ERR_UPLOAD_FAILED: "이미지 저장 중 오류가 발생했습니다. 다시 시도해 주세요.",
     ERR_GENERATE_FAILED: "피팅 이미지를 생성하지 못했습니다. 다시 시도해 주세요.",
+    ERR_NO_POSE: "내 사진에서 사람의 전신/상반신 모습이 감지되지 않았습니다. 사람이 잘 나온 사진으로 다시 시도해 주세요.",
     ERR_SERVER_ERROR:
       "가상 피팅 처리 중 오류가 발생했습니다. 이미지 및 네트워크 상태를 확인해 주세요.",
 
