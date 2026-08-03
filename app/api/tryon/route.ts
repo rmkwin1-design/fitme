@@ -4,6 +4,13 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+interface FalApiError {
+  body?: {
+    detail?: string | Array<{ msg?: string }>;
+  };
+  message?: string;
+}
+
 export async function POST(req: Request) {
   try {
     const { personImageBase64, garmentImageBase64, garmentPhotoType } = await req.json();
@@ -30,19 +37,41 @@ export async function POST(req: Request) {
     // Configure fal client
     fal.config({ credentials: falKey });
 
-    // Helper: Convert Base64 data URL to File object with explicit filename and mime type for Node.js
-    const toFile = (b64String: string, filename: string): File => {
-      const cleanBase64 = b64String.includes(",") ? b64String.split(",")[1] : b64String;
-      const buffer = Buffer.from(cleanBase64, "base64");
-      return new File([buffer], filename, { type: "image/jpeg" });
+    // Dynamic Base64 to File parser matching exact MIME type and extension
+    const toFile = (b64String: string, defaultName: string): File => {
+      const matches = b64String.match(/^data:(image\/\w+);base64,(.+)$/);
+      let mimeType = "image/jpeg";
+      let rawData = b64String;
+
+      if (matches && matches.length === 3) {
+        mimeType = matches[1];
+        rawData = matches[2];
+      } else if (b64String.includes(",")) {
+        const parts = b64String.split(",");
+        const header = parts[0];
+        rawData = parts[1];
+        const mimeMatch = header.match(/data:(image\/\w+);/);
+        if (mimeMatch) mimeType = mimeMatch[1];
+      }
+
+      rawData = rawData.replace(/\s/g, "");
+      const buffer = Buffer.from(rawData, "base64");
+
+      let ext = "jpg";
+      if (mimeType.includes("png")) ext = "png";
+      else if (mimeType.includes("webp")) ext = "webp";
+      else if (mimeType.includes("jpeg") || mimeType.includes("jpg")) ext = "jpg";
+
+      const filename = `${defaultName}.${ext}`;
+      return new File([buffer], filename, { type: mimeType });
     };
 
-    const personFile = toFile(personImageBase64, "person.jpg");
-    const garmentFile = toFile(garmentImageBase64, "garment.jpg");
+    const personFile = toFile(personImageBase64, "person");
+    const garmentFile = toFile(garmentImageBase64, "garment");
 
-    console.log("[TryOn API Debug] Starting fal.storage.upload...", {
-      personSize: personFile.size,
-      garmentSize: garmentFile.size,
+    console.log("[TryOn API Debug] Uploading files to fal.storage:", {
+      person: { name: personFile.name, type: personFile.type, size: personFile.size },
+      garment: { name: garmentFile.name, type: garmentFile.type, size: garmentFile.size },
       garmentPhotoType: garmentPhotoType || "model",
     });
 
@@ -60,10 +89,7 @@ export async function POST(req: Request) {
         ? garmentUrlRes
         : (garmentUrlRes as { url?: string })?.url || String(garmentUrlRes);
 
-    console.log("[TryOn API Debug] Storage upload successful:", {
-      personUrl,
-      garmentUrl,
-    });
+    console.log("[TryOn API Debug] Storage upload complete:", { personUrl, garmentUrl });
 
     if (!personUrl || !garmentUrl) {
       console.error("[TryOn API Debug] Error: Upload returned empty URL", { personUrlRes, garmentUrlRes });
@@ -73,7 +99,7 @@ export async function POST(req: Request) {
       );
     }
 
-    console.log("[TryOn API Debug] Executing fal.subscribe('fal-ai/fashn/tryon/v1.6')...");
+    console.log("[TryOn API Debug] Executing fal-ai/fashn/tryon/v1.6 model...");
 
     const result = (await fal.subscribe("fal-ai/fashn/tryon/v1.6", {
       input: {
@@ -101,11 +127,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ imageUrl });
 
   } catch (err: unknown) {
-    const errorDetails = err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : String(err);
-    console.error("[TryOn API Serverless Function Failure]:", JSON.stringify(errorDetails));
+    const falErr = err as FalApiError;
+    const detail = falErr?.body?.detail;
+    const errorMsg =
+      Array.isArray(detail) && detail[0]?.msg
+        ? detail[0].msg
+        : typeof detail === "string"
+        ? detail
+        : falErr?.message || String(err);
+
+    console.error("[TryOn API Error Log]:", errorMsg);
 
     return NextResponse.json(
-      { errorCode: "ERR_SERVER_ERROR", error: "서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." },
+      {
+        errorCode: "ERR_SERVER_ERROR",
+        error: typeof errorMsg === "string" ? errorMsg : "가상 피팅 처리 중 오류가 발생했습니다."
+      },
       { status: 500 }
     );
   }
