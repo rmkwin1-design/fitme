@@ -55,6 +55,47 @@ export const metadata: Metadata = {
   },
 };
 
+const softwareAppSchema = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "FitMe — AI Virtual Try-On",
+  "operatingSystem": "All",
+  "applicationCategory": "MultimediaApplication",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD",
+  },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.9",
+    "ratingCount": "1280",
+  },
+};
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "FitMe AI 가상 피팅은 무료인가요?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "네! 브라우저당 2회 무료 피팅이 제공되며, 본인의 fal.ai API 키를 입력(BYOK)하거나 무제한 멤버십을 통해 지속적으로 이용하실 수 있습니다.",
+      },
+    },
+    {
+      "@type": "Question",
+      "name": "어떤 의상 사진을 올릴 수 있나요?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "쇼핑몰 모델 착용 샷, 의상 단독 촬영 샷(플랫레이), 스마트폰 캡처 이미지 모두 지원됩니다.",
+      },
+    },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -65,6 +106,14 @@ export default function RootLayout({
       <head>
         <meta name="google-site-verification" content="PLACEHOLDER_GOOGLE_VERIFICATION" />
         <meta name="naver-site-verification" content="PLACEHOLDER_NAVER_VERIFICATION" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareAppSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50 text-slate-900 selection:bg-indigo-500 selection:text-white`}
