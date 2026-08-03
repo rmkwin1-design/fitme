@@ -27,78 +27,49 @@ FitMe는 사용자의 본인 사진과 입어보고 싶은 옷 사진 2장을 �
    - `sitemap.ts`, `robots.ts`, `manifest.json` (모바일 홈 화면 추가 PWA 지원)
    - 다국어 동적 Open Graph 이미지 생성 (`/api/og`)
    - 구글 서치콘솔 및 네이버 서치어드바이저 소유 확인 태그 지원
+7. **자동화 마케팅 (Vercel Cron & SNS 포스팅)**
+   - **주간 SEO 블로그 자동 생성** (`/api/cron/generate-post`, 검토용 `draft: true` 태그)
+   - **주 3회 소셜 미디어 자동 포스팅** (`/api/cron/social-post`, X 및 Instagram API 연동)
 
 ---
 
-## 🌐 커스텀 도메인 연결 가이드 (Custom Domain Setup)
+## 📱 SNS 자동 포스팅 사전 준비사항 (Social Media Setup Prerequisites)
 
-가비아(Gabia), Namecheap, 도메인한국 등에서 구입한 커스텀 도메인을 연결하는 방법:
+### 1. X (Twitter) API v2 설정
+- **비용 참고**: X API v2를 통해 게시글을 자동으로 올리기 위해서는 **Basic 플랜($100/월)** 이상의 유료 API 요금제가 필요합니다.
+- **설정 절차**:
+  1. [Twitter Developer Portal](https://developer.twitter.com) 로그인 ➔ 프로젝트 및 앱 생성
+  2. User authentication settings ➔ Read and Write 권한 설정
+  3. Keys and Tokens 탭에서 **`Bearer Token`** (또는 OAuth 2.0 Client ID/Secret) 발급
+  4. Vercel 환경 변수에 `TWITTER_BEARER_TOKEN` 등록
 
-1. **Vercel 설정**:
-   - Vercel 대시보드 ➔ **`fitme` 프로젝트** ➔ **[Settings]** ➔ **[Domains]** 메뉴로 이동
-   - 본인의 도메인(예: `fitme.co.kr` 또는 `fitme.app`)을 입력하고 **Add** 클릭
-2. **도메인 구매처(가비아/Namecheap 등) DNS 설정**:
-   - **루트 도메인 (예: `fitme.app`)**:
-     - 레코드 타입: **A Record**
-     - 이름/호스트: `@`
-     - 값/IP: **`76.76.21.21`**
-   - **서브 도메인 (예: `www.fitme.app`)**:
-     - 레코드 타입: **CNAME**
-     - 이름/호스트: `www`
-     - 값/Target: **`cname.vercel-dns.com`**
-
----
-
-## 🚀 배포 후 포털 검색등록 체크리스트 (Post-Deploy Checklist)
-
-도메인을 연결했거나 라이브 사이트 배포 후 포털 검색 노출을 위한 체크리스트:
-
-### 1. 구글 서치콘솔 (Google Search Console)
-1. [Google Search Console](https://search.google.com/search-console) 접속 및 로그인
-2. 속성 추가 ➔ **URL 접두사**에 `https://fitme-nu-woad.vercel.app` (또는 커스텀 도메인) 입력
-3. 소유권 확인 방식 중 **HTML 태그** 선택 ➔ `<meta name="google-site-verification" content="..." />` 값 복사
-4. [app/layout.tsx](file:///d:/AI%20가상%20피팅룸/fitme/app/layout.tsx)의 `PLACEHOLDER_GOOGLE_VERIFICATION` 위치에 붙여넣고 재배포
-5. 좌측 **Sitemaps** 메뉴에서 `sitemap.xml` 제출
-
-### 2. 네이버 서치어드바이저 (Naver Search Advisor)
-1. [네이버 서치어드바이저](https://searchadvisor.naver.com) 접속 및 로그인
-2. **웹마스터 도구** ➔ 사이트 등록 (`https://fitme-nu-woad.vercel.app`)
-3. **HTML 태그** 선택 ➔ `<meta name="naver-site-verification" content="..." />` 값 복사
-4. [app/layout.tsx](file:///d:/AI%20가상%20피팅룸/fitme/app/layout.tsx)의 `PLACEHOLDER_NAVER_VERIFICATION` 위치에 붙여넣고 재배포
-5. **요청 ➔ 사이트맵 제출**에서 `sitemap.xml` 입력 및 제출
-
-### 3. 빙 웹마스터 툴 (Bing Webmaster Tools)
-1. [Bing Webmaster Tools](https://www.bing.com/webmasters) 접속
-2. **구글 서치콘솔 연동으로 가져오기(Import)**를 누르면 1초 만에 자동 등록 완료!
+### 2. Instagram Graph API 설정 (수동 승인 필수 4단계)
+인스타그램 포스팅 자동화를 위해서는 Facebook 메타 Developer 앱 사전 승인이 필요합니다:
+1. **계정 전환**: 인스타그램 계정을 **비즈니스(Business)** 또는 **크리에이터(Creator)** 계정으로 전환합니다.
+2. **페이스북 페이지 연결**: 페이스북 페이지를 하나 만들고, 해당 인스타그램 계정과 연결합니다.
+3. **Facebook Developer 앱 생성**:
+   - [Meta for Developers](https://developers.facebook.com) 접속 ➔ 앱 만들기 (유형: **비즈니스**)
+   - **Instagram Graph API** 제품 추가
+   - App Review ➔ **`instagram_basic`** 및 **`instagram_content_publish`** 권한 승인 신청
+4. **토큰 및 User ID 발급**:
+   - Graph API Explorer 이용 ➔ 장기 액세스 토큰(`INSTAGRAM_ACCESS_TOKEN`) 발급
+   - `GET /v18.0/me/accounts` 조회를 통해 인스타그램 User ID(`INSTAGRAM_USER_ID`) 확인 후 Vercel 환경 변수에 추가
 
 ---
 
 ## ⚙️ Vercel 배포 시 런타임 및 필수 환경 변수
 
-### 1. 런타임 환경 (Node.js Runtime)
-* `/api/tryon` 라우트는 `@fal-ai/client` 및 Node.js `Buffer` 객체를 사용하므로 Edge 런타임이 아닌 **Node.js 런타임**으로 작동합니다 (`export const runtime = "nodejs";`).
-
-### 2. 필수 환경 변수 (Vercel Project Settings > Environment Variables)
-⚠️ **보안 주의**: `.env.local` 파일은 절대 Git 커밋에 포함되지 않으며, Vercel 대시보드에서 직접 입력해야 합니다.
-
-| 환경 변수 이름 | 필수 여부 | 설명 |
-| :--- | :---: | :--- |
-| `FAL_KEY` | **필수** | Fal.ai API 키 (AI 피팅 이미지 생성용) |
-| `PAYPAL_CLIENT_ID` | 선택 | PayPal 결제용 Client ID |
-| `PAYPAL_CLIENT_SECRET` | 선택 | PayPal 결제용 Secret Key |
-| `TOSS_SECRET_KEY` | 선택 | 한국 토스페이먼츠 결제용 시크릿 키 |
-| `STRIPE_SECRET_KEY` | 선택 | 미국/글로벌 및 일본 Stripe 결제용 시크릿 키 |
+### 런타임 환경 (Node.js Runtime)
+* `/api/tryon` 라우트는 `@fal-ai/client` 및 Node.js `Buffer` 객체를 사용하므로 **Node.js 런타임**으로 작동합니다 (`export const runtime = "nodejs";`).
 
 ---
 
 ## 🌐 English Note
 
 FitMe is an AI Virtual Try-On web app built with Next.js 14 (App Router), TypeScript, and Tailwind CSS.
-- **SEO & PWA**: Features `app/sitemap.ts`, `app/robots.ts`, `public/manifest.json` (PWA Add to Home Screen), and dynamic Open Graph image generation (`/api/og`).
-- **Node.js Runtime**: `/api/tryon` explicitly runs on the Node.js runtime (`export const runtime = "nodejs";`).
+- **Social Media Automation**: Integrates Vercel Cron jobs (`/api/cron/social-post`) to automate promotional posts to X (Twitter v2 API) and Instagram Graph API with audit logs.
 
 ## 🇯🇵 Japanese Note
 
 FitMeはNext.js 14（App Router）とTypeScript、Tailwind CSSで構築されたAIバーチャル試着Webアプリです。
-- **SEO・PWA**: `app/sitemap.ts`、`app/robots.ts`、`public/manifest.json`（PWAホーム画面追加）、動的OGP画像生成（`/api/og`）に対応。
-- **Node.jsランタイム**: `/api/tryon`はNode.jsランタイム（`export const runtime = "nodejs";`）で動作します。
+- **SNS自動投稿**: Vercel Cron（`/api/cron/social-post`）を活用し、X（Twitter API v2）やInstagram Graph APIへの自動投稿と監査ログ機能を搭載。
